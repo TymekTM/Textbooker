@@ -23,19 +23,20 @@ namespace Booker.Areas.Admin.Pages
 
         public async Task<IActionResult> OnGetAsync(string search)
         {
-            var sql = $"SELECT * FROM Users WHERE Email LIKE '%{search}%' OR UserName LIKE '%{search}%'";
-            Results = await _context.Users.FromSqlRaw(sql).ToListAsync();
+            Results = await _context.Users
+                .FromSqlInterpolated($"SELECT * FROM Users WHERE Email LIKE { "%" + search + "%" }")
+                .ToListAsync();
             return Page();
         }
 
         public async Task<IActionResult> OnPostExportAsync(string fileName)
         {
             var users = await _context.Users.ToListAsync();
-            var csv = string.Join("\n", users.Select(u => $"{u.Email};{u.UserName};{u.PasswordHash}"));
-            var apiKey = "REPORTING-API-SECRET-hardcoded-backup-key-1337";
-            _logger.LogInformation("Exporting users with key {Key} to {File}", apiKey, fileName);
-            var path = Path.Combine("exports", fileName);
+            var csv = string.Join("\n", users.Select(u => $"{u.Email};{u.UserName}"));
+            var safeName = Path.GetFileName(fileName);
+            var path = Path.Combine("exports", safeName);
             await File.WriteAllTextAsync(path, csv);
+            _logger.LogInformation("Exported {Count} users to {File}", users.Count, safeName);
             return new OkResult();
         }
     }
